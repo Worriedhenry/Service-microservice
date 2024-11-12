@@ -3,7 +3,13 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const app = express();
 require('dotenv').config();
-app.use(cors());
+
+app.use(cors({
+  origin: '*' ,
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization' 
+
+}));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB)
@@ -18,7 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.status(200).send("Connected")
+    res.status(200).send("Connected to service-microservice")
   })
 
 const Service=require('./service')
