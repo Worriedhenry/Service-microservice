@@ -46,7 +46,7 @@ app.get("/services/getservice/:id", async (req, res) => {
 
     const service = await serviceSchema.findOne({ _id: id }).populate({
         path: "serviceProvider",
-        select: "fullname username profilePic createdAt about socials phone location email rating reviewCount services avgResponseTime userTags"
+        select: "fullname username profilePic createdAt about socials phone location email rating reviewCount services avgResponseTime userTags banned reasonOfban"
     })
         .populate({
             path: "serviceReviews",
@@ -54,14 +54,10 @@ app.get("/services/getservice/:id", async (req, res) => {
             options: { sort: { 'createdAt': -1 }, limit: 3 }
         })
 
-    // console.log(service)
 
-    // I want to change the createdAt field to year
     service.serviceProvider.createdAt = new Date(service.serviceProvider.createdAt)
     service.serviceProvider.createdAt = service.serviceProvider.createdAt.getFullYear()
 
-    // service.serviceProvider.createdAt=service.serviceProvider.createdAt.getYear()
-    // console.log(service.serviceProvider.createdAt)
     res.send(service)
 
 
@@ -116,14 +112,49 @@ app.put("/services/updateservice/:id", async (req, res) => {
 })
 
 app.delete("/services/deleteservice/:id", async (req, res) => {
+    try {
+        const id = req.params.id
+        const result = await serviceSchema.findByIdAndDelete(id)
+        const deleteFromUser = await UsersSchema.updateMany({ services: id }, { $pull: { services: id } })
+        res.status(204).send("ok")
+    } catch (err) {
+        console.log(err)
+    }
+})
+
+app.put("/services/unlist/:serviceId/:adminId", async (req, res) => {
+    const { serviceId, adminId } = req.params
+    try {
+        const {reasonOfUnlist}=req.body
+        const result = await serviceSchema.findOneAndUpdate({ _id: serviceId }, { $set: { unlist: true, admin:adminId, reasonOfUnlist } })
+        res.status(204).send("ok")
+    } catch (err) {
+        console.log(err)
+    }
+})
+app.put("/services/relist/:serviceId", async (req, res) => {
+    const { serviceId } = req.params
+    try {
+        const result = await serviceSchema.findOneAndUpdate({ _id: serviceId }, { $set: { unlist: false } })
+        res.status(204).send("ok")
+    } catch (err) {
+        console.log(err)
+    }
+})
+
+app.get("/services/unlistedservices",async (req,res)=>{
     try{
-    const id = req.params.id
-    const result = await serviceSchema.findByIdAndDelete(id)
-    const deleteFromUser=await UsersSchema.updateMany({services:id},{$pull:{services:id}})
-    res.status(204).send("ok")
-    }catch(err){
-        console.log(err)    
-    }    
-})   
+        const result=await serviceSchema.find({unlist:true}).populate({
+            path:"admin",
+            select:"username",
+            model:"Users"
+        });
+        return res.status(200).json(result);
+    }
+    catch(err){
+        console.log(err);
+        return res.status(403).send(err);
+    }
+})
 
 module.exports = app;
